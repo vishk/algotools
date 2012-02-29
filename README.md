@@ -1,6 +1,6 @@
 # Algotools
 
-A collection of widely-used graph and other problem solving algorithms.
+A collection of widely-applicable graph and other problem solving algorithms.
 
 These algorithms can be used to solve some cool problems such as navigating a Maze (with the pathfinding-astar algorithm) or finding how similar a pair of words are in terms of the number of operations needed to convert one to another (via the lev-dist function employing dynamic programming) .
 
@@ -15,7 +15,34 @@ or a weighted adjacency-graph such as
 
    At the same time, one could start from as natural a format for unweighted graphs as just a sequences of edges (optionally accompanied by a set of vertices if some vertices are not connected). These edge-lists could be converted to the adjacency graph format or vice-versa using conversion-functions provided.  Also see 'Example Usages' indicated in function documentation.
 
-For usage-guidance in general, see documentation in the namespaces algotools.algos.graph, algotools.algos.dynpro and algotools.data.union-find and docs for individual functions in these namespaces. 
+
+## What's available:
+
+[For specific usage-guidance, see namespace and function-level documentation in the namespaces algotools.algos.graph, algotools.algos.dynpro and algotools.data.union-find.]
+
+ Data Structures (algotools.data): 
+   - Union-Find (algotools.data.union-find) : make-union-find, findroot, union, same-comp?
+
+ Graph based algorithms (algotools.algos.graph):
+   - Graph building/conversion funcs
+
+   - Graph Traversal and other unweighted-graph Algorithms
+     Depth-First-Search (dfs)
+     Breadth-First-Search (bfs)
+     Topological-Sort - usable for scheduling apps
+     Strongly Connected Components (scc-directed-graph)
+     Connected Components for Undirected graph (cc-undirected-graph)
+
+   - Weighted Graph conversion/utility Functions
+
+   - Weighted Graph Algorithms
+     Shortest-path by Dijkstra method
+     Minimum Spanning Tree - Prim's algorithm (given start node)
+     Minimum Spanning Tree - Kruskal's algorithm (no start node)
+     PathFinding in grid - A* algorithm
+
+ Dynamic programming algorithms [work in progress] (algotools.algos.dynpro):
+   - Levenshtein distance (lev-dist)
 
 ## Dependencies
 
