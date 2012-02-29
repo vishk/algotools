@@ -21,7 +21,7 @@ or a weighted adjacency-graph such as
 [For specific usage-guidance, see namespace and function-level documentation in the namespaces algotools.algos.graph, algotools.algos.dynpro and algotools.data.union-find.]
 
 * Data Structures _(algotools.data)_:  
-  - Union-Find _(algotools.data.union-find)_  
+  - Union-Find with path-compression _(algotools.data.union-find)_  
       _make-union-find, findroot, union, same-comp?_  
 
 * Graph based algorithms _(algotools.algos.graph)_:  
