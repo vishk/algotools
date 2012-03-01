@@ -118,7 +118,7 @@ Get path to node :g from results of BFS traversal:
     (path-to :g (:parents bfs_results))
     => (:c :e :g)
 
-### Shortest-path, Minimum Spanning Tree
+### Shortest-path, Minimum Spanning Tree, Pathfinding
 
 Get shortest-path from :a to :f, and :a to :g (use Dijkstra's algo):  
 
@@ -147,6 +147,18 @@ Get Minimum Spanning Tree of edges using Kruskal's algo and UnionFind:
     (MST-kruskal {:c '([:b 1] [:e 2]), :f '([:g 3]), :d '([:e 1] [:f 4]), 
                   :a '([:b 2] [:d 1]), :b '([:d 5]), :e '([:b 3] [:f 4] [:g 5])} true)
     =>[[:c :b] [:d :e] [:a :d] [:a :b] [:f :g] [:e :f]]
+
+Find a path through a grid-Maze (obstacles represented by high values):  
+
+    (pathfind-astar [[6  1   1  2  1] 
+                     [50 99 99 99  1] 
+                     [1  99  1  1  1]
+                     [1  99  1 99  1]
+                     [1   2  1 99  1]] 
+                    [0 1]               ; <---- Start point in grid
+                    [4 0]               ; <---- Goal point in grid
+                    :max 100)
+    => '([0 1] [0 2] [0 3] [0 4] [1 4] [2 4] [2 3] [2 2] [3 2] [4 2] [4 1] [4 0])
 
 ### Dynamic programming  
 
