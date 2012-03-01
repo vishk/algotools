@@ -122,7 +122,7 @@ or a weighted adjaceny-graph such as
 
 
 (defn topological-sort 
-"Given a DIRECTED adjacency-graph, finds the ordering in which each vertex should be processed. It is assumed that the direction of each edge [u,v] indicates that u must be processed before v (for example u and v may be modeling scheduling dependencies). Do not use with UNDIRECTED graphs."
+"Given a DIRECTED ACYCLIC adjacency-graph, finds the ordering in which each vertex should be processed. It is assumed that the direction of each edge [u,v] indicates that u must be processed before v (for example u and v may be modeling scheduling dependencies). Do not use with UNDIRECTED graphs."
  [g]
  (loop [U (set (flatten (seq g))), T [] ] ;unvistd-set and Finish-ordered-verts
      (if-not (seq U)

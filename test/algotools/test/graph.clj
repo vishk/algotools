@@ -77,11 +77,11 @@
   )
 
 (deftest test-topological-sort
-  (is (= '(:c :a :b :d :e :f :g)
+  (is (= '(:c :a :b :d :f :e :g)
          (g/topological-sort
-          {:c '(:b :e), :f '(:g), :d '(:e :f), :a '(:b :d), :b '(:d), :e '(:b :f :g) :g '()})))
-  (is (= '(2 5 8 1 7 4 6 3 9)
-         (g/topological-sort {3 [9], 9 [6], 6 [3], 1 [6 7], 7 [4], 4 [1], 2 [4 5], 5 [8], 8 [2]})
+          {:c '(:b :e), :f '(:g), :d '(:e :f), :a '(:b :d), :b '(:d :e), :e '(:g) :g '()})))
+  (is (= '(:g :a :b :c :f :e :d)
+         (g/topological-sort {:g '(:a :f), :a '(:b :c), :b '(:c :d), :c '(:e :f), :e '(:d), :f '(:e)})
          ))
   )
 
