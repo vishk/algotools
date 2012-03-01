@@ -43,11 +43,12 @@ or a weighted adjacency-graph such as
 
 ## Installation
 
-To use with Leiningen, add 
-    [org.clojars.vishk/algotools "0.1.0"]  
-to your project.clj.  
+To use with Leiningen, add  
 
-Or fetch jar from [clojars.org](https://clojars.org/org.clojars.vishk/algotools).
+    [org.clojars.vishk/algotools "0.1.0"]  
+to your project.clj dependencies.  
+
+Or [get the jar](https://clojars.org/org.clojars.vishk/algotools) from clojars.org.
 
 ## Usage Examples 
 
