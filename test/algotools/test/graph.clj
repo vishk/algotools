@@ -1,28 +1,48 @@
 (ns algotools.test.graph
  (:use clojure.test)
  (:use algotools.data.union-find)
- (:import [algotools.data.union_find UnionFind] )
+ ; (:import [algotools.data.union_find UnionFind] )
  (:require [algotools.algos.graph :as g]))
 
 ; Graph creation/conversion and unweighted graph tests
 
+(defn- same-adjlist-graphs?
+  "Compares the two graph-maps without regard to order in their values (if they are collections)"
+  [{keys1 :keys :as map1}, {keys2 :keys :as map2} ]
+  (letfn [(values-match? [key] ; do values from both maps match for this key?
+            (let [val1 (map1 key), val2 (map2 key)]
+              (if (coll? val1)
+                (= (set val1) (set val2)) ; convert to sets as order may not match
+                (= val1 val2))))]
+
+    (and (= keys1 keys2)
+         (every? values-match? keys1)) ))
+
+(defn- same-undirected-edge-graphs?
+  "Compares the two graph-sets without regard to order in their vertices"
+  [graph1 graph2]
+  (let [set-of-sets1 (set (map set graph1)),
+        set-of-sets2 (set (map set graph2))]
+    (= set-of-sets1 set-of-sets2))
+  )
+
 (deftest test-making-adjlist-graph
-  (is (= {:c '(:b :e), :f '(:g), :d '(:e :f), :a '(:b :d), :b '(:d), :e '(:b :f :g) :g '()})
-      (g/make-adjlist-graph
-       #{[:c :b] [:f :g] [:d :e] [:a :b] [:b :d] [:c :e] [:a :d] [:e :b] [:e :f] [:d :f] [:e :g]} true))
-  (is (= {:e '(:d :g :f :b :c), :c '(:b :e), :f '(:g :d :e), :d '(:e :f :b :a), :g '(:e :f), :a '(:b :d), :b '(:d :e :c :a)}
-         (g/make-adjlist-graph
+  (is (same-adjlist-graphs? {:c '(:b :e), :f '(:g), :d '(:e :f), :a '(:b :d), :b '(:d), :e '(:b :f :g) :g '()}
+                            (g/make-adjlist-graph
+       #{[:c :b] [:f :g] [:d :e] [:a :b] [:b :d] [:c :e] [:a :d] [:e :b] [:e :f] [:d :f] [:e :g]} true)) )
+  (is (same-adjlist-graphs? {:e '(:d :g :f :b :c), :c '(:b :e), :f '(:g :d :e), :d '(:e :f :b :a), :g '(:e :f), :a '(:b :d), :b '(:d :e :c :a)}
+                            (g/make-adjlist-graph
           #{[:c :b] [:f :g] [:d :e] [:f :d] [:g :e] [:a :b] [:f :e] [:b :d] [:b :e] [:c :e] [:a :d]} false)))
 
-  (is (= {:a '(:b :d), :c '(:b :e), :b '(:d :c :a :e), :f '(:g :e :d), :g '(:f :e), :d '(:e :f :b :a), :e '(:b :f :g :d :c), :i '(), :h '()}
-         (g/make-adjlist-graph
+  (is (same-adjlist-graphs? {:a '(:b :d), :c '(:b :e), :b '(:d :c :a :e), :f '(:g :e :d), :g '(:f :e), :d '(:e :f :b :a), :e '(:b :f :g :d :c), :i '(), :h '()}
+                            (g/make-adjlist-graph
           #{[:c :b] [:f :g] [:d :e] [:a :b] [:b :d] [:c :e] [:a :d] [:e :b] [:e :f] [:d :f] [:e :g]} false :vertices #{:a :b :c :d :e :f :g :h :i})))
   )
 
 
 (deftest test-get-edges-from-adjlist-graph
   ;undirected graph
-  (is (= #{[:c :b] [:f :g] [:d :e] [:f :d] [:g :e] [:a :b] [:f :e] [:b :d] [:b :e] [:c :e] [:a :d]}
+  (is (same-undirected-edge-graphs? #{[:c :b] [:f :g] [:d :e] [:f :d] [:g :e] [:a :b] [:f :e] [:b :d] [:b :e] [:c :e] [:a :d]}
          (g/get-edge-graph
           {:g '(:f :e), :c '(:b :e), :f '(:g :e :d), :d '(:e :f :b :a), :a '(:b :d), :b '(:d :c :a :e), :e '(:b :f :g :d :c)} false)))
   ; directed graph
@@ -33,16 +53,16 @@
 
 
 (deftest test-conversion-wtd-graph-to-unweighted
-  (is (= {:a '(:b :d), :c '(:b :e), :b '(:d), :f '(:g), :d '(:e :f), :e '(:b :f :g)}
-         (g/to-unweighted-graph {:c '([:b 1] [:e 2]), :f '([:g 3]), :d '([:e 1] [:f 4]), :a '([:b 2] [:d 1]), :b '([:d 5]), :e '([:b 3] [:f 4] [:g 5])})))
+  (is (same-adjlist-graphs? {:a '(:b :d), :c '(:b :e), :b '(:d), :f '(:g), :d '(:e :f), :e '(:b :f :g)}
+                            (g/to-unweighted-graph {:c '([:b 1] [:e 2]), :f '([:g 3]), :d '([:e 1] [:f 4]), :a '([:b 2] [:d 1]), :b '([:d 5]), :e '([:b 3] [:f 4] [:g 5])})))
   )
 
 
 (deftest test-reversing-adlist-graph
-  (is (= {:d '(:a :b), :f '(:d :e), :g '(:f :e), :e '(:c :d), :b '(:c :a :e)}
-         (g/reverse-graph {:c '(:b :e), :f '(:g), :d '(:e :f), :a '(:b :d), :b '(:d), :e '(:b :f :g) :g ()})))
-  (is (= {2 [8], 3 [6], 8 [5], 1 [4], 9 [3], 5 [2], 4 [2 7], 7 [1], 6 [1 9]}
-         (g/reverse-graph {3 [9], 9 [6], 6 [3], 1 [6 7], 7 [4], 4 [1], 2 [4 5], 5 [8], 8 [2]})))
+  (is (same-adjlist-graphs? {:d '(:a :b), :f '(:d :e), :g '(:f :e), :e '(:c :d), :b '(:c :a :e)}
+                            (g/reverse-graph {:c '(:b :e), :f '(:g), :d '(:e :f), :a '(:b :d), :b '(:d), :e '(:b :f :g) :g ()})))
+  (is (same-adjlist-graphs? {2 [8], 3 [6], 8 [5], 1 [4], 9 [3], 5 [2], 4 [2 7], 7 [1], 6 [1 9]}
+                            (g/reverse-graph {3 [9], 9 [6], 6 [3], 1 [6 7], 7 [4], 4 [1], 2 [4 5], 5 [8], 8 [2]})))
   )
 
 (deftest test-dfs
@@ -52,7 +72,13 @@
 
   ;Directed adj-graph
   (is (= {:unvisited #{:a} :reverse-finish-order '(:c :b :d :e :f :g) :parents {:g :f, :f :e, :e :d, :d :b, :b :c, :c nil}}
-         (g/dfs {:c '(:b :e), :f '(:g), :d '(:e :f), :a '(:b :d), :b '(:d), :e '(:b :f :g) :g '()} :c))) 
+         (g/dfs {:c '(:b :e), :f '(:g), :d '(:e :f), :a '(:b :d), :b '(:d), :e '(:b :f :g) :g '()} :c)))
+
+  ;Directed adj-graph with validation exclude :f
+  (is (= {:unvisited #{:a :f} :reverse-finish-order '(:c :b :d :e :g) :parents {:g :e, :e :d, :d :b, :b :c, :c nil}}
+         (g/dfs {:c '(:b :e), :f '(:g), :d '(:e :f), :a '(:b :d), :b '(:d), :e '(:b :f :g) :g '()},
+                :c, :neighbors-fn (comp #(filter (complement #{:f}) %), g/neighbors))))
+
   )
 
 (deftest test-bfs
@@ -77,25 +103,36 @@
   )
 
 (deftest test-topological-sort
-  (is (= '(:c :a :b :d :f :e :g)
-         (g/topological-sort
-          {:c '(:b :e), :f '(:g), :d '(:e :f), :a '(:b :d), :b '(:d :e), :e '(:g) :g '()})))
+  (let [ts1 (g/topological-sort
+              {:c '(:b :e), :f '(:g), :d '(:e :f), :a '(:b :d), :b '(:d :e), :e '(:g) :g '()})]
+    (is (or (= '(:c :a :b :d :f :e :g) ts1) (= '(:a :c :b :d :f :e :g) ts1)) ))
+
   (is (= '(:g :a :b :c :f :e :d)
          (g/topological-sort {:g '(:a :f), :a '(:b :c), :b '(:c :d), :c '(:e :f), :e '(:d), :f '(:e)})
          ))
   )
 
+(defn neighbors-with-validation [v g Un p]
+  {:pre [(map? g) (set? Un)] :post [(or (if nil (println "Vtx = ", v, ", Valid-Neighbors = ", %)) true)]}
+  (let [nbrs (g/neighbors v g Un p)]
+    (filter (complement #(#{v %} 5)) nbrs)) ; allow if neither the neighbor nor v is 5
+  )
+
 (deftest test-strongly-conn-comps-dir-graph
-  (is (= [#{:g} #{:f} #{:b :d :e} #{:c} #{:a}]
+  (is (= #{'(:c) '(:g) '(:f) '(:a) '(:e :b :d)}
          (g/scc-directed-graph
           {:c '(:b :e), :f '(:g), :d '(:e :f), :a '(:b :d), :b '(:d), :e '(:b :f :g) :g '()} )))
-  (is (= [#{3 6 9} #{1 4 7} #{2 5 8}]
+  (is (= #{ '(6 3 9) '(2 5 8) '(7 4 1)}
          (g/scc-directed-graph
           {3 [9], 9 [6], 6 [3], 1 [6 7], 7 [4], 4 [1], 2 [4 5], 5 [8], 8 [2]})))
+
+  (is (= #{ '(6 3 9), '(7 4 1) '(2) '(5) '(8) }
+         (g/scc-directed-graph
+           {3 [9], 9 [6], 6 [3], 1 [6 7], 7 [4], 4 [1], 2 [4 5], 5 [8], 8 [2]}, :neighbors-fn neighbors-with-validation)))
   )
 
 (deftest test-conn-comps-undir-graph
-  (is (= [#{:a :c :b :f :g :d :e} #{:i :h}]
+  (is (= #{ #{:a :c :b :f :g :d :e} #{:i :h} }
          (g/cc-undirected-graph
           {:g '(:f :e), :c '(:b :e), :f '(:g :e :d), :d '(:e :f :b :a), :a '(:b :d), :b '(:d :c :a :e), :e '(:b :f :g :d :c) :h '(:i) :i '(:h)}))))
 
@@ -104,18 +141,25 @@
 
 (deftest test-making-wtd-adjlist-graph
   ; directed graph
-  (is (= {:e '([:d 2] [:f 1]), :d '([:g 7]), :f '([:g 3]), :a '([:c 1] [:b 4] [:d 5]), :b '([:g 5]), :c '([:e 3]), :g '()}
-         (g/make-wtd-adjlist-graph {[:a :b] 4, [:b :g] 5, [:c :e] 3, [:a :c] 1, [:a :d] 5, [:e :d] 2, [:d :g] 7, [:e :f] 1, [:f :g] 3} true)))
+  (is (same-adjlist-graphs? {:e '([:d 2] [:f 1]), :d '([:g 7]), :f '([:g 3]), :a '([:c 1] [:b 4] [:d 5]), :b '([:g 5]), :c '([:e 3]), :g '()}
+                            (g/make-wtd-adjlist-graph {[:a :b] 4, [:b :g] 5, [:c :e] 3, [:a :c] 1, [:a :d] 5, [:e :d] 2, [:d :g] 7, [:e :f] 1, [:f :g] 3} true)))
 
   ; undirected-graph
-  (is (= {:g '([:d 7] [:f 3] [:b 5]), :e '([:d 2] [:f 1] [:c 3]), :d '([:g 7] [:e 2] [:a 5]), :f '([:g 3] [:e 1]), :a '([:c 1] [:b 4] [:d 5]), :b '([:g 5] [:a 4]), :c '([:e 3] [:a 1])}
-         (g/make-wtd-adjlist-graph {[:a :b] 4, [:b :g] 5, [:c :e] 3, [:a :c] 1, [:a :d] 5, [:e :d] 2, [:d :g] 7, [:e :f] 1, [:f :g] 3} false)))
+  (is (same-adjlist-graphs? {:g '([:d 7] [:f 3] [:b 5]), :e '([:d 2] [:f 1] [:c 3]), :d '([:g 7] [:e 2] [:a 5]), :f '([:g 3] [:e 1]), :a '([:c 1] [:b 4] [:d 5]), :b '([:g 5] [:a 4]), :c '([:e 3] [:a 1])}
+                            (g/make-wtd-adjlist-graph {[:a :b] 4, [:b :g] 5, [:c :e] 3, [:a :c] 1, [:a :d] 5, [:e :d] 2, [:d :g] 7, [:e :f] 1, [:f :g] 3} false)))
   )
 
+(deftest test-reversing-wtd-graph
+  (is (same-adjlist-graphs? {:e '([:c 3] ), :f '([:e 1]), :g '([:f 3] [:d 7] [:b 5]), :b '([:a 4]), :d '([:a 5] [:e 2]),  :c '([:a 1]), :a '()}
+                            (g/reverse-wtd-graph {:e '([:d 2] [:f 1]), :d '([:g 7]), :f '([:g 3]), :a '([:c 1] [:b 4] [:d 5]), :b '([:g 5]), :c '([:e 3]), :g '()})))
+
+  (is (same-adjlist-graphs? {:f '([:d 5]), :g '([:f 7]), :e '([:c 2] [:d 6]), :d '([:a 4]), :b '([:a 3] [:c 1])}
+        (g/reverse-wtd-graph {:c '([:b 1] [:e 2]), :a '([:b 3] [:d 4]), :d '([:e 6] [:f 5]), :f '([:g 7])})))
+  )
 
 (deftest test-getting-edges-wtd-graph
-  (is (= {[:g :d] 7, [:f :g] 3, [:d :e] 2, [:a :c] 1, [:b :g] 5, [:a :b] 4, [:f :e] 1, [:c :e] 3, [:a :d] 5}
-         (g/get-wtd-edge-graph {:g '([:d 7] [:f 3] [:b 5]), :e '([:d 2] [:f 1] [:c 3]), :d '([:g 7] [:e 2] [:a 5]), :f '([:g 3] [:e 1]), :a '([:c 1] [:b 4] [:d 5]), :b '([:g 5] [:a 4]), :c '([:e 3] [:a 1])} false)))
+  (is (same-adjlist-graphs? {[:g :d] 7, [:f :g] 3, [:d :e] 2, [:a :c] 1, [:b :g] 5, [:a :b] 4, [:f :e] 1, [:c :e] 3, [:a :d] 5}
+                            (g/get-wtd-edge-graph {:g '([:d 7] [:f 3] [:b 5]), :e '([:d 2] [:f 1] [:c 3]), :d '([:g 7] [:e 2] [:a 5]), :f '([:g 3] [:e 1]), :a '([:c 1] [:b 4] [:d 5]), :b '([:g 5] [:a 4]), :c '([:e 3] [:a 1])} false)))
 
   (is (= {[:c :b] 1, [:f :g] 3, [:d :e] 1, [:a :b] 2, [:b :d] 5, [:c :e] 2, [:a :d] 1, [:e :b] 3, [:e :f] 4, [:d :f] 4, [:e :g] 5}
          (g/get-wtd-edge-graph {:c '([:b 1] [:e 2]), :f '([:g 3]), :d '([:e 1] [:f 4]), :a '([:b 2] [:d 1]), :b '([:d 5]), :e '([:b 3] [:f 4] [:g 5])} true)))

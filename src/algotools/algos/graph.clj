@@ -1,6 +1,6 @@
 (ns
- ^{:author "Vish Kohli",
-   :doc "A set of widely-applicable (and fun!) graph theory algorithms and utilities.
+  ^{:author "Vish Kohli",
+    :doc    "A set of widely-applicable (and fun!) graph theory algorithms and utilities.
    This includes algorithms for both unweighted and weighted graphs (where edge-costs are provided) as well as directed and undirected graphs, such as Breadth-First and Depth-First Searches, Shortest-path (Dijkstra), Minimum Spanning Trees, Pathfinding (A*) etc.
    In contrast with other languages, graphs that are usable by the functions in this namespace can be in flexible and 'natural' formats.  Most functions in this namespace work with 'Adjacency-list' graphs that are simply mapping of vertices to sequences of neighbors i.e. a graph like this:
    {:c (:b), :f (:g), :d (:e), :a (:b), :b (), :g (), :e ()}
@@ -9,10 +9,19 @@ or a weighted adjaceny-graph such as
    At the same time, one could start from as natural a format for unweighted graphs as just a sequences of edges (optionally accompanied by a set of vertices if some vertices are not connected). These edge-lists could be converted to the adjacency graph format or vice-versa using functions provided below.  Also see 'Example Usages' indicated in several function documentation below.
 
 "}
-    algotools.algos.graph
-    (:use clojure.data.priority-map)
+  algotools.algos.graph
+  ;(:use clojure.data.priority-map)
+  (:use [clojure.data.priority-map :only [priority-map]])
     (:use algotools.data.union-find)
-    (:import [algotools.data.union_find UnionFind] ) )  
+  (:import [algotools.data.union_find UnionFind]
+           (java.util Map List)
+           (clojure.lang IFn))
+  (:gen-class
+    :name algotools.algos.Graph
+    :methods [^:static [scc_directed_graph [java.util.Map, clojure.lang.IFn] clojure.lang.PersistentHashSet]
+              ^:static [neighbors [clojure.lang.Keyword, java.util.Map, java.util.Set, java.util.Map] java.util.List]
+              ^:static [make_adjlist_graph [java.util.Set, java.lang.Boolean] java.util.Map]])
+  )
 
 ;================= Graph building/conversion funcs
 
@@ -61,48 +70,71 @@ or a weighted adjaceny-graph such as
              (merge-with concat R (into {} (map (fn [n] [n [v]])  ns))))
          {} g))
 
-(defn- neighbors
+(defn reverse-wtd-graph
+  "Reverse a directed adjacency graph. Example Usage:
+      (reverse-wtd-graph {:c '([:b 1] [:e 2]), :a '([:b 3] [:d 4]), :d '([:e 6] [:f 5]), :f '([:g 7])})
+      => {:f '([:d 5]), :g '([:f 7]), :e '([:c 2] [:d 6]), :d '([:a 4]), :b '([:a 3] [:c 1])} "
+  [g]
+  (let [temp-map (reduce (fn [R [v ns]]
+            (merge-with concat R (into {} (map (fn [n] [(first n) [v (second n)]])  ns))))
+          {} g),
+        retval (into {} (map (fn [[k v]] [k, (map vec (partition 2 v))] )  temp-map))]
+    retval) )
+
+(defn neighbors
  "Given an adjacency-graph (map of adjacent vertices to each vertex), returns the list of neighbor-vertices of v so long as they are in the set of vertices (Un) provided as the third argument. If an additional argument :exclude is provided, then the behavior of Un is reversed i.e. neighbors are returned if they are not in Un (excluded from Un)."
- ([v g Un]
- {:pre [(map? g) (set? Un)]}
+ ([v g Un parents] ; parents is unused here but usable/needed in custom function (neighbors-fn) that replaces this function
+ {:pre [(map? g) (set? Un)] }
  (filter Un (g v)))
  
- ([v g Un exclude]
+ ([v g Un parents exclude]  ; parents is unused here but usable/needed in custom function (neighbors-fn) that replaces this function
  {:pre [(map? g) (set? Un)]}
  (remove Un (g v))))
 
 ;================= Graph Traversal and other unweighted-graph utilities
+(def debug false)
+
+(defn- dfs2
+  "Helper function for dfs. The neighbors-fn function is used to determine valid neighbors of each vertex during the search. For more details, see documentation for dfs."
+  [g, v, [U T P], & {neighbors-fn :neighbors-fn :or {neighbors-fn neighbors}}]
+  (if debug (println "\nEntering DFS2 v= " v, " Unexplored = " U, ", Reverse-Finish-times = " T ", P = " P))
+  (let [[Uu Tu Pu]
+            (reduce (fn [[u t p] i]
+                      (if debug (println "  In DFS2-reduce vtx= " i, " Unexplored = " u, ", Reverse-Finish-times = " t ", P = " p))
+                      (if (u i)
+                        (dfs2 g, i, [(disj u i) t (assoc p i v)], :neighbors-fn neighbors-fn)
+                        [u t p]))
+                    [U T P]
+                    (neighbors-fn v g U P))]
+    (if debug (println "\nLeaving DFS2 v= " v, " Unexplored = " Uu, ", Reverse-Finish-times = " (cons v Tu) ", P = " Pu))
+    [Uu (cons v Tu) Pu] ))
 
 (defn dfs 
  "Given an adjacency graph (g) and a start-vertex(node) traverses the graph in Depth-First-Search manner and returns a map comprising the following triad :
  - Unvisited-vertices (vertices that were unreachable) 
  - Traversed Vertices in decreasing order of Finish-times (the last vertex was the first terminal point in the Depth-first search, the penultimate the second terminal point and so on).
- - Map of each vertex to its Parent (vertex one hop before it). This map can be used to retrieve the depth-first-traversed-path to any vertex by using the 'path-to' function available in this namespace. Example Usage:
-   (dfs {:c '(:b :e), :f '(:g), :d '(:e :f), :a '(:b :d), :b '(:d), :e '(:b :f :g) :g '()} :c)
+ - Map of each vertex to its Parent (vertex one hop before it). This map can be used to retrieve the depth-first-traversed-path to any vertex by using the 'path-to' function available in this namespace.
+ You can optionally pass in a function to determine valid neighbors of each vertex during the search; otherwise 'neighbors' is used as the default neighbor-fn.
+ Example Usage:
+   (dfs {:c '(:b :e), :f '(:g), :d '(:e :f), :a '(:b :d), :b '(:d), :e '(:b :f :g) :g '()} :c :neighbor-fn neighbors)
   => {:unvisited #{:a}, :reverse-finish-order (:c :b :d :e :f :g), :parents {:g :f, :f :e, :e :d, :d :b, :b :c, :c nil}}"
 
- ([g start]
+ [g start & {neighbors-fn :neighbors-fn :or {neighbors-fn neighbors}}]
    (let [[U T P] 
-           (dfs g start 
-                  [(disj (set (flatten (seq g))) start) () {start nil}] )]
-      {:unvisited U :reverse-finish-order T :parents P}))
+           (dfs2 g start
+                  [(disj (set (flatten (seq g))) start) () {start nil}] :neighbors-fn neighbors-fn)]
+      {:unvisited U :reverse-finish-order T :parents P})
 
- ([g v [U T P]]
-    (let [[Uu Tu Pu] 
-               (reduce (fn [[u t p] i] 
-                           (if (u i)     
-                               (dfs g i [(disj u i) t (assoc p i v)]) 
-                               [u t p]))
-                       [U T P]
-                       (neighbors v g U))]
-      [Uu (cons v Tu) Pu] )))
+ )
 
 
 (defn bfs 
-  "Traverses an adjacency-graph (g) in Breadth-First-Search manner. Supports both directed and undirected graphs. Returns a set of vertices that could not be reached (if any) and a map of the parent of each vtx (the vertex one hop before it). This map can be used with the 'path-to' function elsewhere in this namespace to find the shortest path to any specific vertex from the start-vertex. Example Usage:
+  "Traverses an adjacency-graph (g) in Breadth-First-Search manner. Supports both directed and undirected graphs. Returns a set of vertices that could not be reached (if any) and a map of the parent of each vtx (the vertex one hop before it). This map can be used with the 'path-to' function elsewhere in this namespace to find the shortest path to any specific vertex from the start-vertex.
+ You can optionally pass in a function to determine valid neighbors of each vertex during the search; otherwise 'neighbors' is used as the default neighbor-fn.\n
+  Example Usage:
     (bfs {:g '(:f :e), :c '(:b :e), :f '(:g :e :d), :d '(:e :f :b :a), :a '(:b :d), :b '(:d :c :a :e), :e '(:b :f :g :d :c) } :c)
    => {:unvisited #{}, :parents {:c nil, :b :c, :e :c, :d :b, :a :b, :f :e, :g :e}}"
- [g start]         
+ [g start & {neighbors-fn :neighbors-fn :or {neighbors-fn neighbors}}]
  {:pre [(map? g)] }
  (loop [ q (conj clojure.lang.PersistentQueue/EMPTY start)
          U (disj (set (flatten (seq g))) start)
@@ -110,7 +142,7 @@ or a weighted adjaceny-graph such as
      (if-not (seq q)
          {:unvisited U :parents P}
          (let [v    (peek q)
-               nbrs (neighbors v g (set (keys P)) :exclude)]        
+               nbrs (neighbors-fn v, g, (set (keys P)), P, :exclude)]
            (recur (if (seq nbrs) (apply conj (pop q) nbrs) (pop q) ) 
                   (disj U v) 
                   (reduce #(into % {%2 v}) P nbrs))))))
@@ -128,35 +160,42 @@ or a weighted adjaceny-graph such as
      (if-not (seq U)
          T
          (let [st (first U), 
-              [u t _]  (dfs g st [(disj U st) T {st nil}])]
+              [u t _]  (dfs2 g st [(disj U st) T {st nil}])]
             (recur u t)))))
 
 
 (defn scc-directed-graph 
-"Returns sets of strongly connected components for a directed adjacency graph."
-[g]
+"Returns a Set containing sequences of strongly connected components for a directed adjacency graph."
+[g  & {neighbors-fn :neighbors-fn :or {neighbors-fn neighbors}}]
   (let [gr (reverse-graph g)
+        _  (if debug (println "G = " g))
+        _  (if debug (println "Grev = " gr))
         U0 (set (flatten (seq g)))
         FV (loop [U U0, T [] ] ;unvistd-set and Finish-ordered-verts
                (if-not (seq U)
                    T
                    (let [st (first U), 
-                         [u t _]  (dfs gr st [(disj U st) T {st nil}])]
+                         [u t _]  (dfs2 gr, st, [(disj U st) T {st nil}], :neighbors-fn neighbors)] ;; for Grev use default neighbors
+                     (if debug (println "After DFS on GRev from start " st, " Unexplored = " u, ", Reverse-Finish-times = " t))
                       (recur u t))))]
-        (loop [V FV, C []]
+        ;;(alter-var-root #'debug (constantly false))
+        (if debug (println "============== Phase2 ========="))
+        (loop [V FV, C #{}]
            (if-not (seq V)
                C
                (let [st (first V)
-                     [u t p] (dfs g st [(set (rest V)) [] {st nil}])
+                     [u t p] (dfs2 g, st, [(set (rest V)) [] {st nil}], :neighbors-fn neighbors-fn)
                      visited  (set (keys p))]
-                   (recur (remove visited V) (conj C (set t))))))))
+                 (if debug (println "After DFS on G from start " st, " Unexplored = " u, ", Reverse-Finish-times = " t))
+                   (recur (remove visited V) (conj C t)))))))
+;                  (recur (remove visited V) (conj C (set t))))))))
 
 (defn cc-undirected-graph
  "Returns sets of connected components for an UNDIRECTED graph. For directed graphs, use scc-directed-graph."
-[g]
-  (loop [U (set (flatten (seq g))), C [] ]
+[g & {neighbors-fn :neighbors-fn :or {neighbors-fn neighbors}}]
+  (loop [U (set (flatten (seq g))), C #{} ]
     (if (seq U)
-        (let [{u :unvisited pm :parents}  (bfs g (first U)) 
+        (let [{u :unvisited pm :parents}  (bfs g, (first U), :neighbors-fn neighbors-fn)
               cv (set (keys pm))]
           (recur (apply disj U cv) (conj C cv)))
         C)))
@@ -332,3 +371,12 @@ Otherwise costs to each vtx and parent-ptrs are returned. The latter can be used
                            (concat (remove #(= v (-> % first second)) (pop FE))
                                    (ne v A2 D2)))
                      (assoc Pre v u)))))))))
+
+(defn -neighbors [v g Un parents]
+  (neighbors v g Un parents))
+
+(defn -scc_directed_graph [^Map graph, ^clojure.lang.IFn nbrfunc] ;; nbrfunc will return neighbors with validation
+  (scc-directed-graph graph :neighbors-fn nbrfunc) )
+
+(defn -make_adjlist_graph [^Map graph, ^Boolean directed]
+  (make-adjlist-graph graph, directed))
