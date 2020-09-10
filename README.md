@@ -45,7 +45,7 @@ or a weighted adjacency-graph such as
 
 To use with Leiningen, add  
 
-    [org.clojars.vishk/algotools "0.1.0"]  
+    [org.clojars.vishk/algotools "0.2.0"]  
 to your project.clj dependencies.  
 
 Or [get the jar](https://clojars.org/org.clojars.vishk/algotools) from clojars.org.
